@@ -1,0 +1,19 @@
+{
+	"repoName": "fpp-osc",
+	"name": "Open Sound Control",
+	"author": "Daniel Kulp",
+	"description": "Listener for Open Sound Control messages to trigger FPP Commands",
+	"homeURL": "https://github.com/FalconChristmas/fpp-osc",
+	"srcURL": "https://github.com/FalconChristmas/fpp-osc.git",
+	"bugURL": "https://github.com/FalconChristmas/fpp-osc/issues",
+	"versions": [
+        {
+            "minFPPVersion": "4.0",
+            "maxFPPVersion": "0",
+            "branch": "master",
+            "sha": "",
+            "allowUpdates": 1
+        }
+	]
+}
+
