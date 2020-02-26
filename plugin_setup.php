@@ -72,7 +72,7 @@ function PrintCommandArgsForOSC(tblCommand, configAdjustable, args) {
         }
         var contentListPostfix = "";
         line += "<input class='arg_" + val['name'] + "' id='" + ID  + "' type='text' size='40' maxlength='200' data-osc-type='" + typeName + "' ";
-        if (val['type'] == "datalist" ||  (typeof val['contentListUrl'] != "undefined")) {
+        if (val['type'] == "datalist" ||  (typeof val['contentListUrl'] != "undefined") || (typeof val['contents'] != "undefined")) {
             line += " list='" + ID + "_list' value='" + dv + "'";
         } else if (val['type'] == "bool") {
             if (dv == "true" || dv == "1") {
@@ -100,7 +100,7 @@ function PrintCommandArgsForOSC(tblCommand, configAdjustable, args) {
             }
         }
         line +="</input>";
-        if (val['type'] == "datalist" || (typeof val['contentListUrl'] != "undefined")) {
+        if (val['type'] == "datalist" || (typeof val['contentListUrl'] != "undefined") || (typeof val['contents'] != "undefined")) {
             line += "<datalist id='" + ID + "_list'>";
             $.each(val['contents'], function( key, v ) {
                    line += '<option value="' + v + '"';
