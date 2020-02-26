@@ -364,7 +364,7 @@ $(document).ready(function() {
 
 <div class='genericTableWrapper'>
 <div class='genericTableContents'>
-<table class="fppTable" id="oscEventTable">
+<table class="fppTable" id="oscEventTable"  width='100%'>
 <thead><tr class="fppTableHeader"><th>#</th><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
 <tbody id='oscEventTableBody'>
 </tbody>
