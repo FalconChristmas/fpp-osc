@@ -147,47 +147,107 @@ function PrintCommandArgsForOSC(tblCommand, configAdjustable, args) {
     $.each( args, valFunc);
 }
 
-function ConditionTypeChanged( id ) {
-    var val = $('#conditionSelect_' + id).val();
+function ConditionTypeChanged(item) {
+    var val = $(item).find('.conditionSelect').val();
     if (val === 'ALWAYS') {
-        $("#conditionTypeSelect_" + id).hide();
-        $("#conditionText_" + id).hide();
+        $(item).find(".conditionTypeSelect").hide();
+        $(item).find(".conditionText").hide();
     } else {
-        $("#conditionTypeSelect_" + id).show();
-        $("#conditionText_" + id).show();
+        $(item).find(".conditionTypeSelect").show();
+        $(item).find(".conditionText").show();
     }
 }
+
+function AddOption(value, text, current) {
+    var o = "<option value='" + value + "'";
+
+    if (value == current)
+        o += " selected";
+
+    o += ">" + text + "</option>";
+
+    return o;
+}
+
+function RemoveCondition(item) {
+    if ($(item).parent().find('tr').length == 1)
+        return;
+
+    $(item).remove();
+}
+
+function AddCondition(row, condition, compare, text) {
+    var rows = $(row).find('.conditions > tr').length;
+    var c = "<tr>";
+
+    if (rows == 0)
+        c += "<td><a href='#' class='addButton' onClick='AddCondition($(this).parent().parent().parent().parent(), \"ALWAYS\", \"\", \"\");'></a></td>";
+    else
+        c += "<td><a href='#' class='deleteButton' onClick='RemoveCondition($(this).parent().parent());'></a></td>";
+
+    c += "<td><select class='conditionSelect' onChange='ConditionTypeChanged($(this).parent());'>";
+    c += AddOption('ALWAYS', 'Always', condition);
+    c += AddOption('p1', 'Param1', condition);
+    c += AddOption('p2', 'Param2', condition);
+    c += AddOption('p3', 'Param3', condition);
+    c += AddOption('p4', 'Param4', condition);
+    c += AddOption('p5', 'Param5', condition);
+    c += "</select>";
+
+    c += "<select class='conditionTypeSelect' style='display:none;'>";
+    c += AddOption('=', '=', compare);
+    c += AddOption('!=', '!=', compare);
+    c += AddOption('&lt;', '&lt;', compare);
+    c += AddOption('&lt;=', '&lt;=', compare);
+    c += AddOption('&gt;', '&gt;', compare);
+    c += AddOption('&gt;=', '&gt;=', compare);
+    c += AddOption('contains', 'Contains', compare);
+    c += AddOption('iscontainedin', 'Is In', compare);
+    c += "</select>";
+
+    c += "<input type='text' size='18' maxlength='30' class='conditionText' style='display:none;' value='" + text + "'>";
+
+    c += "</td></tr>";
+
+    $(row).find('.conditions').append(c);
+
+    ConditionTypeChanged($(row).find('.conditions > tr').last());
+}
+
+var uniqueId = 1;
 function AddOSC() {
-    var id = $("#oscEventTable > tbody").children().length + 1;
+    var id = $("#oscEventTableBody > tr").length + 1;
     
-    var html = "<tr id='row_" + id + "' class='fppTableRow'";
-    if (id % 2 == 0) {
-        html += " style='background: #FFFFFF;'";
+    var html = "<tr class='fppTableRow";
+    if (id % 2 != 0) {
+        html += " oddRow'";
     }
-    html += "><td style='vertical-align: top;'><input type='text' size='50' id='desc_" + id + "'></td>";
-    html += "<td style='vertical-align: top;'><input type='text' size='50' id='path_" + id + "'></td>";
-    html += "<td style='vertical-align: top;'>";
-    html += "<select id='conditionSelect_" + id + "' onChange='ConditionTypeChanged(" + id + ")'>";
-    html += "<option value='ALWAYS'>Always</option><option value='p1'>Param1</option><option value='p2'>Param2</option>";
-    html += "<option value='p3'>Param3</option><option value='p4'>Param4</option><option value='p5'>Param5</option></select>";
-    html += "<select id='conditionTypeSelect_" + id + "' style='display:none;'><option value='='>=</option>";
-    html += "<option value='='>=</option><option value='!='>!=</option>";
-    html += "<option value='&lt;'>&lt;</option><option value='&lt;='>&lt;=</option>";
-    html += "<option value='&gt;'>&gt;</option><option value='&gt;='>&gt;=</option>";
-    html += "<option value='contains'>Contains</option><option value='iscontainedin'>Is In</option>";
-    html += "<input type='text' size='20' id='conditionText_" + id + "' style='display:none;'>";
-    html += "</td><td style='vertical-align: top;'><table class='fppTable' border=0 id='tableOSCCommand_" + id +"'>";
-    html += "<tr><td>Command:</td><td><select id='osccommand" + id + "' onChange='CommandSelectChanged(\"osccommand" + id + "\", \"tableOSCCommand_" + id + "\" , false, PrintCommandArgsForOSC);'><option value=''></option></select></td></tr>";
+    html += "'><td class='colNumber rowNumber'>" + id + ".<td><input type='text' size='25' maxlength='50' class='desc'><span style='display: none;' class='uniqueId'>" + uniqueId + "</span></td>";
+    html += "<td><input type='text' size='30' maxlength='50' class='path'></td>";
+    html += "<td><table><tbody class='conditions'></tbody></table>";
+    html += "</td><td><table class='fppTable' border=0 id='tableOSCCommand_" + uniqueId +"'>";
+    html += "<tr><td>Command:</td><td><select class='osccommand' id='osccommand" + uniqueId + "' onChange='CommandSelectChanged(\"osccommand" + uniqueId + "\", \"tableOSCCommand_" + uniqueId + "\" , false, PrintCommandArgsForOSC);'><option value=''></option></select></td></tr>";
     html += "</table></td></tr>";
     
-    $("#oscEventTable > tbody").append(html);
-    LoadCommandList($('#osccommand' + id));
+    $("#oscEventTableBody").append(html);
+    LoadCommandList($('#osccommand' + uniqueId));
 
-    return id;
+    newRow = $('#oscEventTableBody > tr').last();
+    $('#oscEventTableBody > tr').removeClass('selectedEntry');
+    DisableButtonClass('deleteEventButton');
+
+    uniqueId++;
+
+    return newRow;
 }
 
 function RemoveOSC() {
-    
+    if ($('#oscEventTableBody').find('.selectedEntry').length) {
+        $('#oscEventTableBody').find('.selectedEntry').remove();
+        RenumberEvents();
+    }
+
+    DisableButtonClass('deleteEventButton');
 }
 
 var oscConfig = <? echo json_encode($pluginJson, JSON_PRETTY_PRINT); ?>;
@@ -206,23 +266,29 @@ function SaveOSCConfig(config) {
     });
 }
 
-function SaveEvent(id) {
-    var desc = $('#desc_' + id).val();
-    var path = $('#path_' + id).val();
-    var cond = $('#conditionSelect_' + id).val();
-    var condType = $('#conditionTypeSelect_' + id).val();
-    var condText = $('#conditionText_' + id).val();
+function SaveEvent(row) {
+    var desc = $(row).find('.desc').val();
+    var path = $(row).find('.path').val();
+    var conditions = [];
+
+    $(row).find('.conditions > tr').each(function() {
+        var cond     = $(this).find('.conditionSelect').val();
+        var condType = $(this).find('.conditionTypeSelect').val();
+        var condText = $(this).find('.conditionText').val();
+
+        var condition = {};
+        condition.condition = cond;
+        condition.conditionCompare = condType;
+        condition.conditionText = condText;
+        conditions.push(condition);
+    });
+
+    var id = $(row).find('.uniqueId').html();
     
     var json = {
         "description": desc,
         "path": path,
-        "conditions": [
-            {
-                "condition": cond,
-                "conditionCompare": condType,
-                "conditionText": condText
-            }
-        ]
+        "conditions": conditions
     };
     CommandToJSON('osccommand' + id, 'tableOSCCommand_' + id, json, "osc-type");
     return json;
@@ -232,10 +298,10 @@ function SaveEvent(id) {
 function SaveOSC() {
     var port = parseInt($("#portSpin").val());
     oscConfig = { "port": port, "events": []};
-    var count = $("#oscEventTable > tbody").children().length;
-    for (var x = 1; x <= count; x++) {
-        oscConfig["events"][x-1] = SaveEvent(x);
-    }
+    var i = 0;
+    $("#oscEventTableBody > tr").each(function() {
+        oscConfig["events"][i++] = SaveEvent(this);
+    });
     
     SaveOSCConfig(oscConfig);
 }
@@ -245,6 +311,37 @@ function RefreshLastMessages() {
         }
     );
 }
+
+function RenumberEvents() {
+    var id = 1;
+    $('#oscEventTableBody > tr').each(function() {
+        $(this).find('.rowNumber').html('' + id++ + '.');
+        $(this).removeClass('oddRow');
+
+        if (id % 2 != 0) {
+            $(this).addClass('oddRow');
+        }
+    });
+}
+
+$(document).ready(function() {
+
+    $('#oscEventTableBody').sortable({
+        update: function(event, ui) {
+            RenumberEvents();
+        },
+        item: '> tr',
+        scroll: true
+    }).disableSelection();
+
+    $('#oscEventTableBody').on('mousedown', 'tr', function(event,ui){
+        $('#oscEventTableBody tr').removeClass('selectedEntry');
+        $(this).addClass('selectedEntry');
+        EnableButtonClass('deleteEventButton');
+    });
+
+});
+
 </script>
 <div>
 <span style="float:right">
@@ -255,29 +352,42 @@ function RefreshLastMessages() {
 <span>
 <table border=0>
 <tr><td>Listen&nbsp;Port:</td><td width="200px"><input type='number' id='portSpin' min='1' max='65535' size='10' value='<? echo $pluginJson["port"] ?>'></input></td></tr>
-<tr><td><input type="button" value="Save" class="buttons" onclick="SaveOSC();"></td>
-    <td><input type="button" value="Add" class="buttons" onclick="AddOSC();"><input id="delButton" type="button" value="Delete" class="buttons" onclick="RemoveOSC();"></td></tr>
-
+<tr><td colspan='2'>
+        <input type="button" value="Save" class="buttons genericButton" onclick="SaveOSC();">
+        <input type="button" value="Add" class="buttons genericButton" onclick="AddCondition(AddOSC(), 'ALWAYS', '', '');">
+        <input id="delButton" type="button" value="Delete" class="deleteEventButton disableButtons genericButton" onclick="RemoveOSC();">
+    </td>
+</tr>
 </table>
 </span>
 </div>
 
+<div class='genericTableWrapper'>
+<div class='genericTableContents'>
 <table class="fppTable" id="oscEventTable">
-<thead><tr class="fppTableHeader"><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
-<tbody>
+<thead><tr class="fppTableHeader"><th>#</th><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
+<tbody id='oscEventTableBody'>
 </tbody>
 </table>
+</div>
+</div>
 
 <script>
 $.each(oscConfig["events"], function( key, val ) {
-    var id = AddOSC();
-    $('#desc_' + id).val(val["description"]);
-    $('#path_' + id).val(val["path"]);
-    $('#conditionSelect_' + id).val(val["conditions"][0]["condition"]);
-    ConditionTypeChanged(id);
-    $('#conditionTypeSelect_' + id).val(val["conditions"][0]["conditionCompare"]);
-    $('#conditionText_' + id).val(val["conditions"][0]["conditionText"]);
+    var row = AddOSC();
+    $(row).find('.desc').val(val["description"]);
+    $(row).find('.path').val(val["path"]);
+
+    for (var i = 0; i < val['conditions'].length; i++) {
+        AddCondition(row,
+            val['conditions'][i]['condition'],
+            val['conditions'][i]['conditionCompare'],
+            val['conditions'][i]['conditionText']);
+    }
+    var id = parseInt($(row).find('.uniqueId').html());
     PopulateExistingCommand(val, 'osccommand' + id, 'tableOSCCommand_' + id, false, PrintCommandArgsForOSC);
 });
 RefreshLastMessages();
 </script>
+</fieldset>
+</div>
