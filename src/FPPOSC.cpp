@@ -21,7 +21,7 @@
 #include "Plugin.h"
 #include "log.h"
 
-#include "tinyexpr.h"
+#include "util/ExpressionProcessor.h"
 
 enum class ParamType {
     FLOAT,
@@ -234,15 +234,27 @@ public:
     OSCCommandArg(const std::string &t) : arg(t) {
     }
     ~OSCCommandArg() {
+        if (processor) {
+            delete processor;
+        }
     }
     
     std::string arg;
     std::string type;
+    
+    ExpressionProcessor *processor = nullptr;
+    
+    std::string evaluate(const std::string &tp) {
+        if (processor) {
+            std::string s = processor->evaluate(tp);
+            return s;
+        }
+        return "";
+    }
 
-    te_expr *expr = nullptr;
 };
 
-static const char *vNames[] = {"p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9"};
+static std::string vNames[] = {"p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9"};
 
 class OSCEvent {
 public:
@@ -262,6 +274,26 @@ public:
                 args[x].type = v["argTypes"][x].asString();
             }
         }
+        for (auto &a : args) {
+            a.processor = new ExpressionProcessor();
+        }
+        for (int x = 0; x < 9; x++) {
+            ExpressionProcessor::ExpressionVariable *var = new ExpressionProcessor::ExpressionVariable(vNames[x]);
+            variables[x] = var;
+            for (auto &a : args) {
+                a.processor->bindVariable(var);
+            }
+        }
+        for (auto &a : args) {
+            a.processor->compile(a.arg);
+        }
+    }
+    ~OSCEvent() {
+        conditions.clear();
+        args.clear();
+        for (int x = 0; x < 9; x++) {
+            delete variables[x];
+        }
     }
     
     bool matches(OSCInputEvent &ev) {
@@ -277,43 +309,20 @@ public:
     }
     
     void invoke(OSCInputEvent &ev) {
-        if (!exprEvaluated) {
-            for (int x = 0; x < 9; x++) {
-                exprVars[x].type = TE_VARIABLE;
-                exprVars[x].name = vNames[x];
-                exprVars[x].address = &varVals[x];
-                exprVars[x].context = nullptr;
-            }
-            for (auto &a : args) {
-                int err = 0;
-                a.expr = te_compile(a.arg.c_str(), &exprVars[0], 9, &err);
-                if (a.expr) {
-                    hasExpr = true;
-                }
-            }
-            exprEvaluated = true;
+        for (int x = 0; x < ev.params.size(); x++) {
+            variables[x]->setValue(ev.params[x].toString());
         }
-        if (hasExpr) {
-            for (int x = 0; x < ev.params.size(); x++) {
-                varVals[x] = ev.params[x].asDouble();
-            }
-        }
-        
         std::vector<std::string> ar;
         for (auto &a : args) {
-            if (a.expr) {
-                double d = te_eval(a.expr);
-                if (a.type == "int") {
-                    int i = std::round(d);
-                    ar.push_back(std::to_string(i));
-                } else if (a.type == "bool") {
-                    ar.push_back(d != 0.0 ? "true" : "false");
-                } else {
-                    ar.push_back(std::to_string(d));
-                }
-            } else {
-                ar.push_back(a.arg);
+            std::string tp = "string";
+            if (a.type == "bool" || a.type == "int") {
+                tp = a.type;
             }
+            
+            //printf("Eval p: %s\n", a.arg.c_str());
+            std::string r = a.evaluate(tp);
+            //printf("        -> %s\n", r.c_str());
+            ar.push_back(r);
         }
 
         CommandManager::INSTANCE.run(command, ar);
@@ -326,12 +335,8 @@ public:
     
     std::string command;
     std::vector<OSCCommandArg> args;
-    
-        
-    bool exprEvaluated = false;
-    bool hasExpr = false;
-    std::array<double, 9> varVals;
-    std::array<te_variable, 9> exprVars;
+            
+    std::array<ExpressionProcessor::ExpressionVariable*, 9> variables;
 };
 
 
@@ -346,7 +351,7 @@ public:
     unsigned char buffers[MAX_MSG][BUFSIZE+1];
     struct sockaddr_in inAddress[MAX_MSG];
 
-    std::list<OSCEvent> events;
+    std::list<OSCEvent *> events;
     std::list<OSCInputEvent> lastEvents;
     
     FPPOSCPlugin() : FPPPlugin("fpp-osc") {
@@ -375,12 +380,15 @@ public:
             }
             if (root.isMember("events")) {
                 for (int x = 0; x < root["events"].size(); x++) {
-                    events.push_back(OSCEvent(root["events"][x]));
+                    events.push_back(new OSCEvent(root["events"][x]));
                 }
             }
         }
     }
     virtual ~FPPOSCPlugin() {
+        for (auto e : events) {
+            delete e;
+        }
     }
 
 
@@ -406,8 +414,8 @@ public:
                     lastEvents.push_back(event);
                     
                     for (auto &a : events) {
-                        if (a.matches(event)) {
-                            a.invoke(event);
+                        if (a->matches(event)) {
+                            a->invoke(event);
                         }
                     }
                     

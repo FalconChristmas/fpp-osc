@@ -8,9 +8,16 @@ For each Event added, the following fields need to be configured:
 <li>Description - this is a short description of what the event does.  This is ignored by FPP, but can be used to help you organized the events.</li>
 <li>Path - this is the path the OSC controller will be sending the desired event.</li>
 <li>Conditions - these are conditions to filter in/out events based on parameters in the message sent from the OSC controller.  For example, you could apply a condition to only respond to button down states insead of up and down.</li>
-<li>Command - the FPP Command to execute.   Each parameter of the command MAY be calculated based on parameters using very simple math functions.   For example, if parameter 1 is a "float" from a slider control ranging from 0.0-1.0 and you need the value to be 0-100 (example: Volume percent), then the command argument can be entred as "p1 * 100".
-
-    The plugin uses the TinyExpr library from https://github.com/codeplea/tinyexpr for implementing the expression processing.   
+<li>Command - the FPP Command to execute.   If the paramter starts with a single equal sign, it will be evaluated as a simple mathamatical formula.  For example, if parameter 1 is a "float" from a slider control ranging from 0.0-1.0 and you need the value to be 0-100 (example: Volume percent), then the command argument can be entred as "=p1*100".
+<p>
+If the parameter does not start with a single =, it is treated as a string, but parameters can be sustituted in by using %%p1%% in the string.  For example: "Matrix-%%p1%%".
+<p>
+    The plugin uses the TinyExpr library from https://github.com/codeplea/tinyexpr for implementing the expression processing.   We have added three useful functions:<br>
+    <ul>
+        <li>rgb(r, g, b) - will take the r/g/b values (0-255) and create an integer to represent the color </li>
+        <li>hsv(h, s, v) - will take the hue/saturation/value values (0-1) and create an integer to represent the color </li>
+        <li>if(cond, tExp, fExp) - will evaluate the condition and if not 0, will return tExp, otherwise fExp</li>
+    </ul>
 </li>
 </ol>
 <p>
