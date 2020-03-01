@@ -152,6 +152,7 @@ function SaveOSCConfig(config) {
         processData: false,
         contentType: 'application/json',
         success: function (data) {
+           SetRestartFlag(2);
         }
     });
 }
