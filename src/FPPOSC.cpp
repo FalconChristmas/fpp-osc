@@ -265,7 +265,13 @@ public:
             conditions.push_back(OSCCondition(v["conditions"][x]));
         }
 
-        command = v["command"].asString();
+        command = v;
+        command.removeMember("path");
+        command.removeMember("description");
+        command.removeMember("conditions");
+        command.removeMember("argTypes");
+        command.removeMember("args");
+
         for (int x = 0; x < v["args"].size(); x++) {
             args.push_back(OSCCommandArg(v["args"][x].asString()));
         }
@@ -312,7 +318,9 @@ public:
         for (int x = 0; x < ev.params.size(); x++) {
             variables[x]->setValue(ev.params[x].toString());
         }
-        std::vector<std::string> ar;
+        
+        Json::Value newCommand = command;;
+
         for (auto &a : args) {
             std::string tp = "string";
             if (a.type == "bool" || a.type == "int") {
@@ -322,10 +330,10 @@ public:
             //printf("Eval p: %s\n", a.arg.c_str());
             std::string r = a.evaluate(tp);
             //printf("        -> %s\n", r.c_str());
-            ar.push_back(r);
+            newCommand["args"].append(r);
         }
 
-        CommandManager::INSTANCE.run(command, ar);
+        CommandManager::INSTANCE.run(newCommand);
     }
     
     std::string path;
@@ -333,10 +341,100 @@ public:
     
     std::list<OSCCondition> conditions;
     
-    std::string command;
+    Json::Value command;
     std::vector<OSCCommandArg> args;
             
     std::array<ExpressionProcessor::ExpressionVariable*, 9> variables;
+};
+
+class OSCCommand : public Command {
+public:
+    OSCCommand(int sock) : Command("OSC Event"), socket(sock) {
+        args.push_back(CommandArg("Path", "string", "Path"));
+        args.push_back(CommandArg("IPAddress", "string", "IP Address"));
+        args.push_back(CommandArg("Port", "int", "Port").setRange(1, 65535).setDefaultValue("9000"));
+        for (int x = 1; x < 5; x++) {
+            std::string n = "P" + std::to_string(x);
+            args.push_back(CommandArg(n + "Type", "string", n + " Type").setContentList({"None", "Integer", "Float", "String"}).setDefaultValue("None"));
+            args.push_back(CommandArg(n, "string", n));
+        }
+    }
+    
+    int roundTo4(int p) {
+        while (p % 4) {
+            p++;
+        }
+        return p;
+    }
+    virtual std::unique_ptr<Command::Result> run(const std::vector<std::string> &args) override {
+        char buf[1200];
+        memset(buf, 0, 1200);
+        strcpy(buf, args[0].c_str());
+        int pos = args[0].length();
+        pos = roundTo4(pos);
+        
+        std::string types = ",";
+        
+        for (int x = 0; x < 4; x++) {
+            std::string type = args[x*2 + 3];
+            if (type == "Integer") {
+                types += "i";
+            } else if (type == "Float") {
+                types += "f";
+            } else if (type == "String") {
+                types += "s";
+            }
+        }
+        strcpy(&buf[pos], types.c_str());
+        pos += types.length();
+        pos = roundTo4(pos);
+        for (int x = 0; x < 4; x++) {
+            std::string type = args[x*2 + 3];
+            std::string value = args[x*2 + 4];
+            if (type == "Integer") {
+                int i = 0;
+                try {
+                    i = std::stoi(value);
+                } catch (...) {
+                    
+                }
+                i = htobe32(i);
+                memcpy(&buf[pos], &i, 4);
+                pos += 4;
+            } else if (type == "Float") {
+                int i = 0;
+                try {
+                    float f = std::stof(value);
+                    int *ip = (int*)&f;
+                    i = *ip;
+                } catch (...) {
+                    
+                }
+                i = htobe32(i);
+                memcpy(&buf[pos], &i, 4);
+                pos += 4;
+            } else if (type == "String") {
+                strcpy(&buf[pos], value.c_str());
+                pos += value.length();
+                pos = roundTo4(pos);
+            }
+        }
+        int port = 9000;
+        if (args[2] != "") {
+            port = std::stoi(args[2]);
+        }
+        struct sockaddr_in dest_addr;
+        memset(&dest_addr, 0, sizeof(dest_addr));
+        dest_addr.sin_family = AF_INET;
+        dest_addr.sin_addr.s_addr = inet_addr(args[1].c_str());
+        dest_addr.sin_port = htons(port);
+        
+        sendto(socket, buf, pos, 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+        
+        return std::make_unique<Command::Result>("OSC Command Sent");
+    }
+    
+    int socket;
 };
 
 
@@ -398,7 +496,7 @@ public:
             v += a.toString() + "\n";
         }
         return httpserver::http_response_builder(v, 200);
-            }
+    }
     bool ProcessPacket(int i) {
         LogDebug(VB_PLUGIN, "OSC Process Packet\n");
         int msgcnt = recvmmsg(i, msgs, MAX_MSG, 0, nullptr);
@@ -450,6 +548,7 @@ public:
         callbacks[sock] = [this](int i) {
             return ProcessPacket(i);
         };
+        CommandManager::INSTANCE.addCommand(new OSCCommand(sock));
     }
 };
 

@@ -1,6 +1,5 @@
 
 <?
-
 function returnIfExists($json, $setting) {
     if ($json == null) {
         return "";
@@ -33,6 +32,7 @@ $pluginJson = convertAndGetSettings();
 <legend>Open Sound Control Config</legend>
 
 <script>
+allowMultisyncCommands = true;
 
 
 function ConditionTypeChanged(item) {
@@ -216,7 +216,6 @@ function RenumberEvents() {
 }
 
 $(document).ready(function() {
-
     $('#oscEventTableBody').sortable({
         update: function(event, ui) {
             RenumberEvents();
