@@ -95,7 +95,7 @@ function AddCondition(row, condition, compare, text) {
     c += AddOption('iscontainedin', 'Is In', compare);
     c += "</select>";
 
-    c += "<input type='text' size='18' maxlength='30' class='conditionText' style='display:none;' value='" + text + "'>";
+    c += "<input type='text' size='12' maxlength='30' class='conditionText' style='display:none;' value='" + text + "'>";
 
     c += "</td></tr>";
 
@@ -252,8 +252,8 @@ $(document).ready(function() {
 </span>
 </div>
 
-<div class='genericTableWrapper'>
-<div class='genericTableContents'>
+<div class='fppTableWrapper'>
+<div class='fppTableContents'>
 <table class="fppTable" id="oscEventTable"  width='100%'>
 <thead><tr class="fppTableHeader"><th>#</th><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
 <tbody id='oscEventTableBody'>
