@@ -103,8 +103,8 @@ public:
                     LogDebug(VB_PLUGIN, "         %d: %f\n", y, val.c_str());
                     break;
                 }
-            default:
-                    HexDump("Received data:", (void*)&b[pos], 64);
+	        default:
+                    LogDebug(VB_PLUGIN, "     Unknown Type %d: %d\n", y, (int)type[y]);
             }
         }
     }
