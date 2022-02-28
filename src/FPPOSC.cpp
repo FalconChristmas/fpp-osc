@@ -12,12 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <httpserver.hpp>
-#if __has_include(<jsoncpp/json/json.h>)
-#include <jsoncpp/json/json.h>
-#endif
-#if __has_include(<SysSocket.h>)
 #include <SysSocket.h>
-#endif
 #include <cmath>
 
 
@@ -472,8 +467,8 @@ public:
             memset(buffers[i], 0, BUFSIZE);
         }
         
-        if (FileExists("/home/fpp/media/config/plugin.fpp-osc.json")) {
-            std::ifstream t("/home/fpp/media/config/plugin.fpp-osc.json");
+        if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-osc.json"))) {
+            std::ifstream t(FPP_DIR_CONFIG("/plugin.fpp-osc.json"));
             std::stringstream buffer;
             buffer << t.rdbuf();
             std::string config = buffer.str();
