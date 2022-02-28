@@ -1,3 +1,5 @@
+#include <fpp-pch.h>
+
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <errno.h>
@@ -10,8 +12,14 @@
 #include <vector>
 #include <sstream>
 #include <httpserver.hpp>
+#if __has_include(<jsoncpp/json/json.h>)
 #include <jsoncpp/json/json.h>
+#endif
+#if __has_include(<SysSocket.h>)
+#include <SysSocket.h>
+#endif
 #include <cmath>
+
 
 #include "FPPOSC.h"
 
@@ -529,7 +537,7 @@ public:
     void registerApis(httpserver::webserver *m_ws) override {
         m_ws->register_resource("/OSC", this, true);
     }
-    virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) {
+    virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
         
         struct sockaddr_in addr;

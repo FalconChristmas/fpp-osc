@@ -1,4 +1,5 @@
 *.so
+*.dylib
 *.o
 ._*
 .linkOK
