@@ -28,7 +28,6 @@ $pluginJson = convertAndGetSettings();
 
 
 <div id="global" class="settings">
-<fieldset>
 <legend>Open Sound Control Config</legend>
 
 <script>
@@ -112,7 +111,8 @@ function AddOSC() {
     if (id % 2 != 0) {
         html += " oddRow'";
     }
-    html += "'><td class='colNumber rowNumber'>" + id + ".<td><input type='text' size='25' maxlength='50' class='desc'><span style='display: none;' class='uniqueId'>" + uniqueId + "</span></td>";
+    html += "'><td class='center' valign='middle'><div class='rowGrip'><i class='rowGripIcon fpp-icon-grip'></i></div></td>";
+    html += "<td><input type='text' size='25' maxlength='50' class='desc'><span style='display: none;' class='uniqueId'>" + uniqueId + "</span></td>";
     html += "<td><input type='text' size='30' maxlength='50' class='path'></td>";
     html += "<td><table><tbody class='conditions'></tbody></table>";
     html += "</td><td><table class='fppTable' border=0 id='tableOSCCommand_" + uniqueId +"'>";
@@ -134,7 +134,6 @@ function AddOSC() {
 function RemoveOSC() {
     if ($('#oscEventTableBody').find('.selectedEntry').length) {
         $('#oscEventTableBody').find('.selectedEntry').remove();
-        RenumberEvents();
     }
 
     DisableButtonClass('deleteEventButton');
@@ -203,22 +202,9 @@ function RefreshLastMessages() {
     );
 }
 
-function RenumberEvents() {
-    var id = 1;
-    $('#oscEventTableBody > tr').each(function() {
-        $(this).find('.rowNumber').html('' + id++ + '.');
-        $(this).removeClass('oddRow');
-
-        if (id % 2 != 0) {
-            $(this).addClass('oddRow');
-        }
-    });
-}
-
 $(document).ready(function() {
     $('#oscEventTableBody').sortable({
         update: function(event, ui) {
-            RenumberEvents();
         },
         item: '> tr',
         scroll: true
@@ -233,34 +219,51 @@ $(document).ready(function() {
 });
 
 </script>
-<div>
-<span style="float:right">
-<table border=0>
-<tr><td style='vertical-align: top;'>Last Messages:&nbsp;<input type="button" value="Refresh" class="buttons" onclick="RefreshLastMessages();"></td></tr><tr><td style='vertical-align: top;'><pre id="lastMessages" style='min-width:200px; margin:1px;'></pre></td></tr>
-</table>
-</span>
-<span>
-<table border=0>
-<tr><td>Listen&nbsp;Port:</td><td width="200px"><input type='number' id='portSpin' min='1' max='65535' size='10' value='<? echo $pluginJson["port"] ?>'></input></td></tr>
-<tr><td colspan='2'>
-        <input type="button" value="Save" class="buttons genericButton" onclick="SaveOSC();">
-        <input type="button" value="Add" class="buttons genericButton" onclick="AddCondition(AddOSC(), 'ALWAYS', '', '');">
-        <input id="delButton" type="button" value="Delete" class="deleteEventButton disableButtons genericButton" onclick="RemoveOSC();">
-    </td>
-</tr>
-</table>
-</span>
+<div class="row">
+    <div class="col-auto mr-auto">
+        <div class="row">
+            <div class="col-auto">
+                Listen&nbsp;Port:</td><td width="200px"><input type='number' id='portSpin' min='1' max='65535' size='10' value='<? echo $pluginJson["port"] ?>'></input>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-auto">
+                <input type="button" value="Save" class="buttons genericButton" onclick="SaveOSC();">
+                <input type="button" value="Add" class="buttons genericButton" onclick="AddCondition(AddOSC(), 'ALWAYS', '', '');">
+                <input id="delButton" type="button" value="Delete" class="deleteEventButton disableButtons genericButton" onclick="RemoveOSC();">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-auto">
+                <div class='fppTableWrapper'>
+                    <div class='fppTableContents'>
+                        <table class="fppSelectableRowTable" id="oscEventTable"  width='100%'>
+                        <thead><tr class="fppTableHeader"><th>#</th><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
+                        <tbody id='oscEventTableBody' class="ui-sortable">
+                        </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div>
+            <div class="row">
+                <div class="col">
+                    Last Messages:&nbsp;<input type="button" value="Refresh" class="buttons" onclick="RefreshLastMessages();">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <pre id="lastMessages" style='min-width:150px; margin:1px;min-height:300px;'></pre>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class='fppTableWrapper'>
-<div class='fppTableContents'>
-<table class="fppTable" id="oscEventTable"  width='100%'>
-<thead><tr class="fppTableHeader"><th>#</th><th>Description</th><th>Path</th><th>Conditions</th><th>Command</th></tr></thead>
-<tbody id='oscEventTableBody'>
-</tbody>
-</table>
-</div>
-</div>
+
 
 <script>
 $.each(oscConfig["events"], function( key, val ) {
@@ -279,5 +282,4 @@ $.each(oscConfig["events"], function( key, val ) {
 });
 RefreshLastMessages();
 </script>
-</fieldset>
 </div>
