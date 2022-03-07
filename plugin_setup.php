@@ -1,4 +1,4 @@
-
+width
 <?
 function returnIfExists($json, $setting) {
     if ($json == null) {
@@ -223,7 +223,7 @@ $(document).ready(function() {
     <div class="col-auto mr-auto">
         <div class="row">
             <div class="col-auto">
-                Listen&nbsp;Port:</td><td width="200px"><input type='number' id='portSpin' min='1' max='65535' size='10' value='<? echo $pluginJson["port"] ?>'></input>
+                Listen&nbsp;Port: &nbsp;<input type='number' id='portSpin' min='1' max='65535' size='10' value='<? echo $pluginJson["port"] ?>'></input>
             </div>
         </div>
         <div class="row">
