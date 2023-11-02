@@ -144,7 +144,7 @@ function SaveOSCConfig(config) {
     var data = JSON.stringify(config);
     $.ajax({
         type: "POST",
-        url: 'fppjson.php?command=setPluginJSON&plugin=fpp-osc',
+        url: 'api/configfile/plugin.fpp-osc.json',
         dataType: 'json',
         async: false,
         data: data,

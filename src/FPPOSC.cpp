@@ -468,14 +468,8 @@ public:
         }
         
         if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-osc.json"))) {
-            std::ifstream t(FPP_DIR_CONFIG("/plugin.fpp-osc.json"));
-            std::stringstream buffer;
-            buffer << t.rdbuf();
-            std::string config = buffer.str();
             Json::Value root;
-            Json::Reader reader;
-            bool success = reader.parse(buffer.str(), root);
-            
+            LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-osc.json"), root);            
             if (root.isMember("port")) {
                 port = root["port"].asInt();
             }
