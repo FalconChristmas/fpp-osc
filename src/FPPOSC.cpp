@@ -487,7 +487,7 @@ public:
     }
 
 
-    virtual const std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
+    virtual std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
         std::string v;
         for (auto &a : lastEvents) {
             v += a.toString() + "\n";
