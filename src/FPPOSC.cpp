@@ -357,7 +357,8 @@ public:
         args.push_back(CommandArg("IPAddress", "string", "IP Address"));
         args.push_back(CommandArg("Port", "int", "Port").setRange(1, 65535).setDefaultValue("9000"));
         for (int x = 1; x < 5; x++) {
-            std::string n = "P" + std::to_string(x);
+            std::string n = "P";
+            n += std::to_string(x);
             args.push_back(CommandArg(n + "Type", "string", n + " Type").setContentList({"None", "Integer", "Float", "String"}).setDefaultValue("None"));
             args.push_back(CommandArg(n, "string", n));
         }
@@ -487,7 +488,7 @@ public:
     }
 
 
-    virtual const std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
+    virtual HTTP_RESPONSE_CONST std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
         std::string v;
         for (auto &a : lastEvents) {
             v += a.toString() + "\n";
