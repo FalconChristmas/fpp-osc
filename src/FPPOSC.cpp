@@ -514,9 +514,35 @@ public:
                             a->invoke(event);
                         }
                     }
-                    
-                } else {
-                    //osc bundle?
+                } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7)) {
+                    //osc bundle
+                    // first 8 are "#bundle" + null
+                    // secton 8 are timecode
+                    int idx = 16;
+                    uint32_t sz = (uint32_t)(&buffers[x][idx])[0];
+                    idx += 4;
+                    while (sz > 0 && idx < msgs[x].msg_len) {
+                        uint32_t *b = (uint32_t *)&buffers[x][idx];
+
+                        OSCInputEvent event(b);
+                        if (lastEvents.size() > 10) {
+                            lastEvents.pop_front();
+                        }
+                        lastEvents.push_back(event);
+                        
+                        for (auto &a : events) {
+                            if (a->matches(event)) {
+                                a->invoke(event);
+                            }
+                        }
+                        idx += sz;
+                        if (idx < msgs[x].msg_len) {
+                            sz = (uint32_t)(&buffers[x][idx])[0];
+                            idx += 4;
+                        }
+                    }
+
+
                 }
             }
             msgcnt = recvmmsg(i, msgs, MAX_MSG, 0, nullptr);
