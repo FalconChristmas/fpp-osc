@@ -515,15 +515,16 @@ public:
                         }
                     }
                 } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7)) {
+                    LogDebug(VB_PLUGIN, "Found #bundle Packet\n");
                     //osc bundle
                     // first 8 are "#bundle" + null
                     // secton 8 are timecode
                     int idx = 16;
                     uint32_t sz = (uint32_t)(&buffers[x][idx])[0];
                     idx += 4;
+                    uint32_t *b = (uint32_t *)&buffers[x][idx];
+                    LogDebug(VB_PLUGIN, "    Index %d:  Size: %d    First: %X\n", idx, sz, b[0]);
                     while (sz > 0 && idx < msgs[x].msg_len) {
-                        uint32_t *b = (uint32_t *)&buffers[x][idx];
-
                         OSCInputEvent event(b);
                         if (lastEvents.size() > 10) {
                             lastEvents.pop_front();
@@ -539,10 +540,12 @@ public:
                         if (idx < msgs[x].msg_len) {
                             sz = (uint32_t)(&buffers[x][idx])[0];
                             idx += 4;
+                            b = (uint32_t *)&buffers[x][idx];
+                            LogDebug(VB_PLUGIN, "    Index %d:  Size: %d    First: %X\n", idx, sz, b[0]);
                         }
                     }
-
-
+                } else {
+                    LogDebug(VB_PLUGIN, "Unknown OSC packet  %02X %02X %02X %02X\n", buffers[x][0], buffers[x][1], buffers[x][2], buffers[x][3]);
                 }
             }
             msgcnt = recvmmsg(i, msgs, MAX_MSG, 0, nullptr);
