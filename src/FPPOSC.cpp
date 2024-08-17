@@ -514,7 +514,7 @@ public:
                             a->invoke(event);
                         }
                     }
-                } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7)) {
+                } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7) == 0) {
                     LogDebug(VB_PLUGIN, "Found #bundle Packet\n");
                     //osc bundle
                     // first 8 are "#bundle" + null
