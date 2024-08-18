@@ -515,10 +515,11 @@ public:
                         }
                     }
                 } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7) == 0) {
-                    LogDebug(VB_PLUGIN, "Found #bundle Packet\n");
+                    LogDebug(VB_PLUGIN, "Found #bundle Packet: msglen: %d\n", msgs[x].msg_len);
+                    HexDump("Msg Data: ", &buffers[x][0], msgs[x].msg_len, VB_PLUGIN, 32);
                     //osc bundle
                     // first 8 are "#bundle" + null
-                    // secton 8 are timecode
+                    // next 8 are timecode
                     int idx = 16;
                     uint32_t sz = (uint32_t)(&buffers[x][idx])[0];
                     idx += 4;
