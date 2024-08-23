@@ -516,14 +516,16 @@ public:
                     }
                 } else if (strncmp("#bundle", (const char *)&buffers[x][0], 7) == 0) {
                     LogDebug(VB_PLUGIN, "Found #bundle Packet: msglen: %d\n", msgs[x].msg_len);
-                    HexDump("Msg Data: ", &buffers[x][0], msgs[x].msg_len, VB_PLUGIN, 32);
+                    uint8_t *data = buffers[x];
+                    HexDump("Msg Data: ", data, msgs[x].msg_len, VB_PLUGIN, 32);
                     //osc bundle
                     // first 8 are "#bundle" + null
                     // next 8 are timecode
                     int idx = 16;
-                    uint32_t sz = (uint32_t)(&buffers[x][idx])[0];
+                    uint32_t *b = (uint32_t *)(&data[idx]);
+                    uint32_t sz = b[0];
                     idx += 4;
-                    uint32_t *b = (uint32_t *)&buffers[x][idx];
+                    b = (uint32_t *)(&data[idx]);
                     LogDebug(VB_PLUGIN, "    Index %d:  Size: %d    First: %X\n", idx, sz, b[0]);
                     while (sz > 0 && idx < msgs[x].msg_len) {
                         OSCInputEvent event(b);
@@ -539,9 +541,10 @@ public:
                         }
                         idx += sz;
                         if (idx < msgs[x].msg_len) {
-                            sz = (uint32_t)(&buffers[x][idx])[0];
+                            b = (uint32_t *)(&data[idx]);
+                            sz = b[0];
                             idx += 4;
-                            b = (uint32_t *)&buffers[x][idx];
+                            b = (uint32_t *)(&data[idx]);
                             LogDebug(VB_PLUGIN, "    Index %d:  Size: %d    First: %X\n", idx, sz, b[0]);
                         }
                     }
