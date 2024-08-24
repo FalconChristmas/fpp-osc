@@ -1,4 +1,3 @@
-width
 <?
 function returnIfExists($json, $setting) {
     if ($json == null) {
