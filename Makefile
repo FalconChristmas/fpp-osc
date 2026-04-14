@@ -7,7 +7,7 @@ debug: all
 
 CFLAGS+=-I.
 OBJECTS_fpp_osc_so += src/FPPOSC.o
-LIBS_fpp_osc_so += -L$(SRCDIR) -lfpp -ljsoncpp -lhttpserver
+LIBS_fpp_osc_so += -L$(SRCDIR) -lfpp -ljsoncpp
 CXXFLAGS_src/FPPOSC.o += -I$(SRCDIR)
 
 
