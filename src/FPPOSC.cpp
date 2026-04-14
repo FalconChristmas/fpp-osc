@@ -11,7 +11,7 @@
 #include <list>
 #include <vector>
 #include <sstream>
-#include <httpserver.hpp>
+#include <drogon/HttpAppFramework.h>
 #include <SysSocket.h>
 #include <cmath>
 
@@ -442,7 +442,7 @@ public:
 };
 
 
-class FPPOSCPlugin : public FPPPlugin, public httpserver::http_resource {
+class FPPOSCPlugin : public FPPPlugin {
 public:
     int port = 9000;
     
@@ -488,13 +488,7 @@ public:
     }
 
 
-    virtual HTTP_RESPONSE_CONST std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
-        std::string v;
-        for (auto &a : lastEvents) {
-            v += a.toString() + "\n";
-        }
-        return std::shared_ptr<httpserver::http_response>(new httpserver::string_response(v, 200));
-    }
+    // drogon handler will be used instead of render_GET
     bool ProcessPacket(int i) {
         LogDebug(VB_PLUGIN, "OSC Process Packet\n");
         int msgcnt = recvmmsg(i, msgs, MAX_MSG, 0, nullptr);
@@ -557,8 +551,21 @@ public:
 
         return false;
     }
-    void registerApis(httpserver::webserver *m_ws) override {
-        m_ws->register_resource("/OSC", this, true);
+    void registerApis() override {
+        auto handleOSC = [this](const drogon::HttpRequestPtr& req,
+                                std::function<void (const drogon::HttpResponsePtr &)> &&callback) {
+            std::string v;
+            for (auto &a : lastEvents) {
+                v += a.toString() + "\n";
+            }
+            auto resp = drogon::HttpResponse::newHttpResponse();
+            resp->setStatusCode(drogon::k200OK);
+            resp->setContentTypeString("text/plain");
+            resp->setBody(v);
+            callback(resp);
+        };
+        drogon::app().registerHandler("/OSC", handleOSC, {drogon::Get});
+        drogon::app().registerHandler("/api/plugin-apis/OSC", handleOSC, {drogon::Get});
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
