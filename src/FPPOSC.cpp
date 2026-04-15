@@ -442,7 +442,7 @@ public:
 };
 
 
-class FPPOSCPlugin : public FPPPlugin {
+class FPPOSCPlugin : public FPPPlugins::Plugin, public FPPPlugins::APIProviderPlugin {
 public:
     int port = 9000;
     
@@ -456,7 +456,7 @@ public:
     std::list<OSCEvent *> events;
     std::list<OSCInputEvent> lastEvents;
     
-    FPPOSCPlugin() : FPPPlugin("fpp-osc") {
+    FPPOSCPlugin() : FPPPlugins::Plugin("fpp-osc"), FPPPlugins::APIProviderPlugin() {
         LogInfo(VB_PLUGIN, "Initializing OSC Plugin\n");
         
         memset(msgs, 0, sizeof(msgs));
@@ -593,7 +593,7 @@ public:
 
 
 extern "C" {
-    FPPPlugin *createPlugin() {
+    FPPPlugins::Plugin *createPlugin() {
         return new FPPOSCPlugin();
     }
 }
