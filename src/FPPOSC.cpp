@@ -564,8 +564,9 @@ public:
             resp->setBody(v);
             callback(resp);
         };
-        drogon::app().registerHandler("/OSC", handleOSC, {drogon::Get});
-        drogon::app().registerHandler("/api/plugin-apis/OSC", handleOSC, {drogon::Get});
+        auto handleOSC2 = handleOSC;
+        drogon::app().registerHandler("/OSC", std::move(handleOSC), {drogon::Get});
+        drogon::app().registerHandler("/api/plugin-apis/OSC", std::move(handleOSC2), {drogon::Get});
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
