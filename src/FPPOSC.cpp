@@ -564,9 +564,10 @@ public:
             resp->setBody(v);
             callback(resp);
         };
-        auto handleOSC2 = handleOSC;
+        // Only "/OSC" is needed: Apache rewrites api/plugin-apis/OSC to
+        // localhost:32322/OSC, stripping the plugin-apis/ prefix, so a
+        // "/api/plugin-apis/OSC" route would never be reached.
         drogon::app().registerHandler("/OSC", std::move(handleOSC), {drogon::Get});
-        drogon::app().registerHandler("/api/plugin-apis/OSC", std::move(handleOSC2), {drogon::Get});
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
