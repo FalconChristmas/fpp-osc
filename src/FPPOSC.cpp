@@ -564,10 +564,17 @@ public:
             resp->setBody(v);
             callback(resp);
         };
-        // Only "/OSC" is needed: Apache rewrites api/plugin-apis/OSC to
+        // Only "/OSC" paths are needed: Apache rewrites api/plugin-apis/OSC to
         // localhost:32322/OSC, stripping the plugin-apis/ prefix, so a
         // "/api/plugin-apis/OSC" route would never be reached.
-        drogon::app().registerHandler("/OSC", std::move(handleOSC), {drogon::Get});
+        // The UI fetches api/plugin-apis/OSC/Last, and the pre-drogon web
+        // server matched the whole /OSC subtree, so register the sub-paths too.
+        // Each registration gets its own copy: drogon takes the callable by
+        // forwarding reference, so passing the lvalue would store a reference
+        // to this stack-local lambda and crash once registerApis() returns.
+        auto copy = handleOSC;
+        drogon::app().registerHandler("/OSC", std::move(copy), {drogon::Get});
+        drogon::app().registerHandlerViaRegex("/OSC/.*", std::move(handleOSC), {drogon::Get});
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
