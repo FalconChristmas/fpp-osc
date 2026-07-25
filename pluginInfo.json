@@ -6,6 +6,7 @@
     "homeURL": "https://github.com/FalconChristmas/fpp-osc",
     "srcURL": "https://github.com/FalconChristmas/fpp-osc.git",
     "bugURL": "https://github.com/FalconChristmas/fpp-osc/issues",
+    "iconURL": "https://raw.githubusercontent.com/FalconChristmas/fpp-osc/master/icon.png",
     "versions": [
         {
             "minFPPVersion": "4.0",
