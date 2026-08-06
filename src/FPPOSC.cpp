@@ -11,7 +11,6 @@
 #include <list>
 #include <vector>
 #include <sstream>
-#include <drogon/HttpAppFramework.h>
 #include <SysSocket.h>
 #include <cmath>
 
@@ -22,7 +21,9 @@
 #include "common.h"
 #include "settings.h"
 #include "Plugin.h"
+#include "fpphttp.h"
 #include "log.h"
+#include "Warnings.h"
 
 #include "util/ExpressionProcessor.h"
 
@@ -487,8 +488,29 @@ public:
         }
     }
 
+    // Give back everything addControlCallbacks() took. Closing the listen socket
+    // is not optional: FPP takes the descriptor out of its epoll loop on unload
+    // but the socket stays open and the UDP port stays bound, so the next load
+    // would bind() the same port, get EADDRINUSE and take fppd down with it -
+    // the bind failure path below is exit(1). Also withdraws the command, whose
+    // vtable lives in this .so. Nothing here is asynchronous, so no readiness
+    // predicate is needed.
+    virtual std::function<bool()> shutdown() override {
+        if (oscCommand) {
+            // removeCommand() only unregisters - CommandManager deletes whatever
+            // is still in its registry at shutdown, so taking it back means
+            // owning it again.
+            CommandManager::INSTANCE.removeCommand(oscCommand);
+            delete oscCommand;
+            oscCommand = nullptr;
+        }
+        if (listenSocket >= 0) {
+            close(listenSocket);
+            listenSocket = -1;
+        }
+        return nullptr;
+    }
 
-    // drogon handler will be used instead of render_GET
     bool ProcessPacket(int i) {
         LogDebug(VB_PLUGIN, "OSC Process Packet\n");
         int msgcnt = recvmmsg(i, msgs, MAX_MSG, 0, nullptr);
@@ -551,9 +573,15 @@ public:
 
         return false;
     }
+    void unregisterApis() override {
+        // Disarms /OSC and its subpaths and does not return until no request is
+        // inside the handler and the handler itself - this plugin's code - has
+        // been destroyed, which is what makes a later dlclose() safe.
+        FPPPlugins::unregisterPluginApi("/OSC");
+    }
     void registerApis() override {
-        auto handleOSC = [this](const drogon::HttpRequestPtr& req,
-                                std::function<void (const drogon::HttpResponsePtr &)> &&callback) {
+        auto handleOSC = [this](const HttpRequestPtr& req,
+                                HttpCallback &&callback) {
             std::string v;
             for (auto &a : lastEvents) {
                 v += a.toString() + "\n";
@@ -568,13 +596,13 @@ public:
         // localhost:32322/OSC, stripping the plugin-apis/ prefix, so a
         // "/api/plugin-apis/OSC" route would never be reached.
         // The UI fetches api/plugin-apis/OSC/Last, and the pre-drogon web
-        // server matched the whole /OSC subtree, so register the sub-paths too.
-        // Each registration gets its own copy: drogon takes the callable by
-        // forwarding reference, so passing the lvalue would store a reference
-        // to this stack-local lambda and crash once registerApis() returns.
-        auto copy = handleOSC;
-        drogon::app().registerHandler("/OSC", std::move(copy), {drogon::Get});
-        drogon::app().registerHandlerViaRegex("/OSC/.*", std::move(handleOSC), {drogon::Get});
+        // server matched the whole /OSC subtree, so family=true registers the
+        // sub-paths too.
+        //
+        // Registered through FPP rather than drogon::app() directly: drogon has
+        // no route removal, so a handler registered straight with it could never
+        // be withdrawn and would pin this plugin in memory for the life of fppd.
+        FPPPlugins::registerPluginApi("/OSC", std::move(handleOSC), {drogon::Get}, true);
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
@@ -587,18 +615,38 @@ public:
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port = htons(port);
         addrlen = sizeof(addr);
-        // Bind the socket to address/port
+        // Bind the socket to address/port. A failure here used to exit(1), which
+        // was survivable when this only ever ran during fppd startup. It is not
+        // now: this also runs when the plugin is installed or reloaded on a
+        // running player, so a busy port would take the show down. Log it and
+        // leave the plugin loaded but not listening instead.
         if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-            LogDebug(VB_PLUGIN, "OSC bind failed: %s\n", strerror(errno));
-            exit(1);
+            LogErr(VB_PLUGIN, "OSC bind to port %d failed: %s - OSC input disabled\n", port, strerror(errno));
+            close(sock);
+            WarningHolder::AddWarning("fpp-osc could not listen on UDP port " + std::to_string(port) + ": " + strerror(errno));
+            return;
         }
         callbacks[sock] = [this](int i) {
             return ProcessPacket(i);
         };
-        CommandManager::INSTANCE.addCommand(new OSCCommand(sock));
+        // Kept so shutdown() can close it and free the port for the next load.
+        listenSocket = sock;
+        oscCommand = new OSCCommand(sock);
+        CommandManager::INSTANCE.addCommand(oscCommand);
     }
+
+    int listenSocket = -1;
+    OSCCommand *oscCommand = nullptr;
 };
 
+
+// Safe to dlclose() on unload: no threads, no timers, no CurlManager requests
+// and no drogon client objects. The routes go through registerPluginApi() and
+// come back in unregisterApis(); FPP withdraws the listen descriptor from its
+// epoll loop, and shutdown() closes that socket and withdraws the command. The
+// OSCEvent objects are this plugin's own and go in the destructor, which runs
+// before the library is unmapped.
+FPP_PLUGIN_SUPPORTS_UNLOAD()
 
 extern "C" {
     FPPPlugins::Plugin *createPlugin() {
