@@ -24,6 +24,8 @@
 #include "fpphttp.h"
 #include "log.h"
 #include "Warnings.h"
+#include "EPollManager.h"
+#include "FileMonitor.h"
 
 #include "util/ExpressionProcessor.h"
 
@@ -469,9 +471,40 @@ public:
             memset(buffers[i], 0, BUFSIZE);
         }
         
+        loadConfig();
+
+        // This plugin's configuration is its own JSON file rather than the
+        // key=value settings file FPPPlugins::Plugin watches, so the
+        // monitorSettings constructor argument would not see it. Watch it
+        // directly instead, so editing the event map or the port takes effect
+        // without restarting fppd. shutdown() gives the watch back - the
+        // callback lives in this library.
+        std::function<void()> reload = [this]() {
+            configChanged();
+        };
+        FileMonitor::INSTANCE.AddFile(name, FPP_DIR_CONFIG("/plugin.fpp-osc.json"), reload);
+    }
+
+    // Replace the event map, and the port if it moved. Runs on the main loop.
+    void configChanged() {
+        int oldPort = port;
+        LogInfo(VB_PLUGIN, "OSC: configuration changed, reloading\n");
+        loadConfig();
+        if (port != oldPort) {
+            LogInfo(VB_PLUGIN, "OSC: port %d -> %d, rebinding\n", oldPort, port);
+            closeListenSocket();
+            openListenSocket();
+        }
+    }
+
+    void loadConfig() {
+        for (auto e : events) {
+            delete e;
+        }
+        events.clear();
         if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-osc.json"))) {
             Json::Value root;
-            LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-osc.json"), root);            
+            LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-osc.json"), root);
             if (root.isMember("port")) {
                 port = root["port"].asInt();
             }
@@ -504,10 +537,8 @@ public:
             delete oscCommand;
             oscCommand = nullptr;
         }
-        if (listenSocket >= 0) {
-            close(listenSocket);
-            listenSocket = -1;
-        }
+        FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/plugin.fpp-osc.json"));
+        closeListenSocket();
         return nullptr;
     }
 
@@ -605,34 +636,54 @@ public:
         FPPPlugins::registerPluginApi("/OSC", std::move(handleOSC), {drogon::Get}, true);
     }
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
-        int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
-        
-        struct sockaddr_in addr;
-        socklen_t addrlen;
+        // Nothing goes into the callbacks map: the listen socket is rebound when
+        // the configured port changes, and the map is long gone by then. It is
+        // this plugin's own descriptor, so it registers and withdraws it itself.
+        openListenSocket();
+    }
 
+    void openListenSocket() {
+        int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+
+        struct sockaddr_in addr;
         memset((char *)&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port = htons(port);
-        addrlen = sizeof(addr);
         // Bind the socket to address/port. A failure here used to exit(1), which
         // was survivable when this only ever ran during fppd startup. It is not
-        // now: this also runs when the plugin is installed or reloaded on a
-        // running player, so a busy port would take the show down. Log it and
-        // leave the plugin loaded but not listening instead.
+        // now: this also runs when the plugin is installed, reloaded, or given a
+        // new port on a running player, so a busy port would take the show down.
+        // Log it and leave the plugin loaded but not listening instead.
         if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
             LogErr(VB_PLUGIN, "OSC bind to port %d failed: %s - OSC input disabled\n", port, strerror(errno));
             close(sock);
             WarningHolder::AddWarning("fpp-osc could not listen on UDP port " + std::to_string(port) + ": " + strerror(errno));
             return;
         }
-        callbacks[sock] = [this](int i) {
+        WarningHolder::RemoveWarning("fpp-osc could not listen on UDP port " + std::to_string(port) + ": Address already in use");
+        listenSocket = sock;
+        std::function<bool(int)> cb = [this](int i) {
             return ProcessPacket(i);
         };
-        // Kept so shutdown() can close it and free the port for the next load.
-        listenSocket = sock;
-        oscCommand = new OSCCommand(sock);
-        CommandManager::INSTANCE.addCommand(oscCommand);
+        EPollManager::INSTANCE.addFileDescriptor(listenSocket, cb);
+
+        if (oscCommand == nullptr) {
+            oscCommand = new OSCCommand(listenSocket);
+            CommandManager::INSTANCE.addCommand(oscCommand);
+        } else {
+            oscCommand->socket = listenSocket;
+        }
+    }
+
+    // Closing the socket is not optional when the port moves: it stays bound
+    // otherwise, and the rebind gets EADDRINUSE.
+    void closeListenSocket() {
+        if (listenSocket >= 0) {
+            EPollManager::INSTANCE.removeFileDescriptor(listenSocket);
+            close(listenSocket);
+            listenSocket = -1;
+        }
     }
 
     int listenSocket = -1;
