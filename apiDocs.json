@@ -1,0 +1,23 @@
+{
+    "paths": {
+        "/OSC": {
+            "get": {
+                "summary": "Recently received OSC messages",
+                "description": "The last few OSC messages the plugin has seen, one per line, most recent last. Intended for working out the path and argument types a device sends while setting up an event mapping.",
+                "responses": {
+                    "200": {
+                        "description": "Recent messages, newline separated",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "/cue/1/go(1)\n/fader(0.750000)\n"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
