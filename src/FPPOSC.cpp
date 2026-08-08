@@ -367,21 +367,26 @@ public:
         }
     }
     
-    int roundTo4(int p) {
-        while (p % 4) {
-            p++;
-        }
-        return p;
+    // An OSC-string is the content, a mandatory null terminator, then null
+    // padding out to a multiple of 4 bytes.  Padding on the packet length (not
+    // the string length) keeps every element 4-aligned relative to the start of
+    // the packet, which is what the alignment is defined against.
+    static void appendOSCString(std::string &packet, const std::string &s) {
+        packet += s;
+        do {
+            packet += '\0';
+        } while (packet.size() % 4);
+    }
+    static void appendOSCInt32(std::string &packet, int32_t v) {
+        v = htobe32(v);
+        packet.append((const char *)&v, sizeof(v));
     }
     virtual std::unique_ptr<Command::Result> run(const std::vector<std::string> &args) override {
-        char buf[1200];
-        memset(buf, 0, 1200);
-        strcpy(buf, args[0].c_str());
-        int pos = args[0].length();
-        pos = roundTo4(pos);
-        
+        std::string packet;
+        appendOSCString(packet, args[0]);
+
         std::string types = ",";
-        
+
         for (int x = 0; x < 4; x++) {
             std::string type = args[x*2 + 3];
             if (type == "Integer") {
@@ -392,38 +397,30 @@ public:
                 types += "s";
             }
         }
-        strcpy(&buf[pos], types.c_str());
-        pos += types.length();
-        pos = roundTo4(pos);
+        appendOSCString(packet, types);
         for (int x = 0; x < 4; x++) {
             std::string type = args[x*2 + 3];
             std::string value = args[x*2 + 4];
             if (type == "Integer") {
-                int i = 0;
+                int32_t i = 0;
                 try {
                     i = std::stoi(value);
                 } catch (...) {
-                    
+
                 }
-                i = htobe32(i);
-                memcpy(&buf[pos], &i, 4);
-                pos += 4;
+                appendOSCInt32(packet, i);
             } else if (type == "Float") {
-                int i = 0;
+                float f = 0.0f;
                 try {
-                    float f = std::stof(value);
-                    int *ip = (int*)&f;
-                    i = *ip;
+                    f = std::stof(value);
                 } catch (...) {
-                    
+
                 }
-                i = htobe32(i);
-                memcpy(&buf[pos], &i, 4);
-                pos += 4;
+                int32_t i;
+                memcpy(&i, &f, sizeof(i));
+                appendOSCInt32(packet, i);
             } else if (type == "String") {
-                strcpy(&buf[pos], value.c_str());
-                pos += value.length();
-                pos = roundTo4(pos);
+                appendOSCString(packet, value);
             }
         }
         int port = 9000;
@@ -435,9 +432,9 @@ public:
         dest_addr.sin_family = AF_INET;
         dest_addr.sin_addr.s_addr = inet_addr(args[1].c_str());
         dest_addr.sin_port = htons(port);
-        
-        sendto(socket, buf, pos, 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
-        
+
+        sendto(socket, packet.data(), packet.size(), 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+
         return std::make_unique<Command::Result>("OSC Command Sent");
     }
     
