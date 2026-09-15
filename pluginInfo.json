@@ -42,5 +42,33 @@
             "sha": "",
             "allowUpdates": 1
         }
-    ]
+    ],
+    "privacy": {
+        "summary": "Listens on your network for OSC messages from the moment it is installed (no off switch), so any device on your network can run the FPP commands you map. Sends OSC only to addresses you enter.",
+        "sends": [
+            {
+                "to": "http://the IP address you enter in the OSC Event command",
+                "what": "the OSC path and up to four values you set in that command",
+                "why": "to trigger a lighting desk, show controller or other OSC device from a playlist or event",
+                "alwaysOn": false
+            },
+            {
+                "to": "the FPP players you list on a mapped command (MultiSync)",
+                "what": "the FPP command you mapped, with values taken from the incoming OSC message",
+                "why": "so one OSC message can also control your other players",
+                "alwaysOn": false
+            }
+        ],
+        "collects": [],
+        "sensors": [],
+        "remoteAccess": "lan",
+        "systemChanges": [
+            {
+                "kind": "network",
+                "what": "Opens UDP port 9000 (changeable) on every network interface for OSC messages as soon as it is installed; no off switch"
+            }
+        ],
+        "closedCode": false,
+        "other": "Anyone on your network who can reach the listen port can run the FPP commands you have mapped, with argument values taken from their message; there is no password. The last few OSC messages received are kept in memory only, shown on the settings page and on FPP's /api/plugin-apis/OSC endpoint (no password), and are gone when fppd restarts. Your port and event mappings are in config/plugin.fpp-osc.json and stay there after uninstall."
+    }
 }
